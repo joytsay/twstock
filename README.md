@@ -1,201 +1,248 @@
-[![Travis Build
-Status](https://travis-ci.org/mlouielu/twstock.svg?branch=master)](https://travis-ci.org/mlouielu/twstock)
-[![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/d03c5laj01ap7qrt?svg=true)](https://ci.appveyor.com/project/mlouielu/twstock)
-[![Coverage Status](https://coveralls.io/repos/github/mlouielu/twstock/badge.svg?branch=master)](https://coveralls.io/github/mlouielu/twstock?branch=master)
-[![PyPI version](https://badge.fury.io/py/twstock.svg)](https://badge.fury.io/py/twstock)
-[![Documentation Status](https://readthedocs.org/projects/twstock/badge/?version=latest)](http://twstock.readthedocs.io/zh_TW/latest/?badge=latest)
+# twStock notebook
+
+------
 
 
-有任何問題歡迎透過 [Gitter.im](https://gitter.im/twstock/Lobby) 詢問。
+## 目的
+1. 擷取台股即時資料分析
+2. 分析個股定期不定額
+3. **注意台股TWSE 有request limit** _(每5秒鐘3個request,過的話會被封鎖ip至少20分鐘以上)_
+------
 
-twstock 台灣股市股票價格擷取
-----------------------------
+#  瑞耘
+* 四大買賣點分析
 
-擷取台灣證券交易所之股價資料
-重新製作 toomore/grs 之功能
 
-資料來源:
+```python
+import twstock
+from twstock import Stock
+from twstock import BestFourPoint
+import pandas as pd
+import numpy as np
 
-* [證券交易所 (TWSE)](http://www.twse.com.tw)
-* [證券櫃台買賣中心 (TPEX)](http://www.tpex.org.tw)
+print(twstock.codes['6532'].name)
+print(twstock.codes['6532'].start)
+print(twstock.codes['6532'])   
 
-(請注意，TWSE 有 request limit, 每 5 秒鐘 3 個 request，超過的話會被 ban 掉，請自行注意)
+stock = Stock('6532')               # 擷取股價
+bfp = BestFourPoint(stock)
+print('\n判斷是否為四大 買點')
+print(bfp.best_four_point_to_buy())    # 判斷是否為四大買點
+print('\n判斷是否為四大 賣點')
+print(bfp.best_four_point_to_sell())   # 判斷是否為四大賣點
+print('\n綜合判斷')
+print(bfp.best_four_point())           # 綜合判斷
 
-## Documentation
+ma_p = stock.moving_average(stock.price, 5)       # 計算五日均價
+ma_c = stock.moving_average(stock.capacity, 5)    # 計算五日均量
+ma_p_cont = stock.continuous(ma_p)                # 計算五日均價持續天數
+ma_br = stock.ma_bias_ratio(5, 10)                # 計算五日、十日乖離值
+d = {'ma_p': ma_p, 'ma_c': ma_c}
+df = pd.DataFrame(data=d)
+print('\n計算五日均價持續天數:')
+print(ma_p_cont)
+print('\n計算 ma_p(五日均價) ma_c(五日均量):')
+print(df)
 
-* [twstock documentation (正體中文)](http://twstock.readthedocs.io/zh_TW/latest)
-
-## Requirements
-
-* Python 3
-* lxml
-* requests
-
-## Install
-
-By PyPi
-
-```
-$ python -m pip install --user twstock
-```
-
-By Source
-
-```
-$ git clone https://github.com/mlouielu/twstock
-$ cd twstock
-$ pipenv install
-```
-
-By Source & install
-
-```
-$ git clone https://github.com/mlouielu/twstock
-$ cd twstock
-$ python -m pip install --user flit
-$ flit install
+twstock.realtime.get('6532')    # 擷取當前股票資訊
+twstock.realtime.get(['6532'])  # 擷取當前三檔資訊
 ```
 
-## CLI Tools
+    瑞耘
+    2016/09/26
+    StockCodeInfo(type='股票', code='6532', name='瑞耘', ISIN='TW0006532005', start='2016/09/26', market='上櫃', group='半導體業', CFI='ESVUFR')
+    
+    判斷是否為四大 買點
+    量大收紅, 三日均價大於六日均價
+    
+    判斷是否為四大 賣點
+    False
+    
+    綜合判斷
+    (True, '量大收紅, 三日均價大於六日均價')
+    
+    計算五日均價持續天數:
+    26
+    
+    計算 ma_p(五日均價) ma_c(五日均量):
+         ma_p       ma_c
+    0   30.00   887800.0
+    1   30.62   905000.0
+    2   31.55   823400.0
+    3   31.93   763600.0
+    4   32.03   501000.0
+    5   32.14   427400.0
+    6   32.99   423200.0
+    7   33.94   781400.0
+    8   34.83   858000.0
+    9   35.88   927400.0
+    10  36.76   967600.0
+    11  37.09  1033200.0
+    12  37.27   715400.0
+    13  37.68   879400.0
+    14  38.03  1172600.0
+    15  38.44  1193200.0
+    16  38.54  1200200.0
+    17  38.86  1421200.0
+    18  39.24  1312200.0
+    19  39.47  1018800.0
+    20  40.33  1263600.0
+    21  41.91  1732800.0
+    22  43.27  1805400.0
+    23  44.42  1852400.0
+    24  45.83  2184800.0
+    25  46.94  2297200.0
+    26  48.52  2758000.0
+    
 
-```
-$ twstock -b 2330 6223
-四大買賣點判斷 Best Four Point
-------------------------------
-2330: Buy   量大收紅
-6223: Sell  量縮價跌, 三日均價小於六日均價
-```
 
-```
-$ twstock -s 2330 6223
--------------- 2330 ----------------
-high : 215.0 214.0 210.0 210.5 208.5
-low  : 212.0 211.0 208.0 208.5 206.5
-price: 215.0 211.5 208.5 210.0 208.5
--------------- 2337 ----------------
-high :  16.2  16.8  16.4 16.75 16.75
-low  :  15.8  16.1 15.15  16.3 16.25
-price: 15.95 16.25 16.25  16.6  16.7
-```
 
-## Update Codes
 
-當你第一次使用 twstock 時，你可以更新 TPEX 跟 TWSE 的列表，可以使用兩種方式更新：
+    {'6532': {'timestamp': 1588833000.0,
+      'info': {'code': '6532',
+       'channel': '6532.tw',
+       'name': '瑞耘',
+       'fullname': '瑞耘科技股份有限公司',
+       'time': '2020-05-07 14:30:00'},
+      'realtime': {'latest_trade_price': '-',
+       'trade_volume': '-',
+       'accumulate_trade_volume': '3422',
+       'best_bid_price': ['59.2000', '59.1000', '59.0000', '58.9000', '58.8000'],
+       'best_bid_volume': ['637', '2', '3', '7', '4'],
+       'best_ask_price': ['-'],
+       'best_ask_volume': ['-'],
+       'open': '56.8000',
+       'high': '59.2000',
+       'low': '55.8000'},
+      'success': True},
+     'success': True}
 
-* By CLI
 
-```
-$ twstock -U
-Start to update codes
-Done!
-```
 
-* By Python
+## 基本操作
+* 匯入twstock library:
 
-```
->>> import twstock
->>> twstock.__update_codes()
-```
-
-## Quick Start
-
-分析計算
 
 ```python
 from twstock import Stock
 
-stock = Stock('2330')                             # 擷取台積電股價
+stock = Stock('2892')                             # 擷取第一金股價
 ma_p = stock.moving_average(stock.price, 5)       # 計算五日均價
 ma_c = stock.moving_average(stock.capacity, 5)    # 計算五日均量
 ma_p_cont = stock.continuous(ma_p)                # 計算五日均價持續天數
 ma_br = stock.ma_bias_ratio(5, 10)                # 計算五日、十日乖離值
 ```
 
-擷取自 2015 年 1 月至今之資料
 
 ```python
-stock = Stock('2330')
+ma_p_cont
+```
+
+
+```python
+import pandas as pd
+import numpy as np
+d = {'ma_p': ma_p, 'ma_c': ma_c}
+df = pd.DataFrame(data=d)
+df
+```
+
+
+```python
+import pandas as pd
+import numpy as np
+
+d = {'ma_br': ma_br}
+df = pd.DataFrame(data=d)
+df
+```
+
+* 擷取自 2015 年 1 月至今之資料
+
+
+```python
 stock.fetch_from(2015, 1)
 ```
 
-基本資料之使用
+* 基本資料之使用:
+
 
 ```python
->>> stock = Stock('2330')
->>> stock.price
-[203.5, 203.0, 205.0, 205.0, 205.5, 207.0, 207.0, 203.0, 207.0, 209.0, 209.0, 212.0, 210.5, 211.5, 213.0, 212.0, 207.5, 208.0, 207.0, 208.0, 211.5, 213.0, 216.5, 215.5, 218.0, 217.0, 215.0, 211.5, 208.5, 210.0, 208.5]
->>> stock.capacity
-[22490217, 17163108, 17419705, 23028298, 18307715, 26088748, 32976727, 67935145, 29623649, 23265323, 1535230, 22545164, 15382025, 34729326, 21654488, 35190159, 63111746, 49983303, 39083899, 19486457, 32856536, 17489571, 28784100, 45384482, 26094649, 39686091, 60140797, 44504785, 52273921, 27049234, 31709978]
->>> stock.data[0]
-Data(date=datetime.datetime(2017, 5, 18, 0, 0), capacity=22490217, turnover=4559780051, open=202.5, high=204.0, low=201.5, close=203.5, change=-0.5, transaction=6983)
+stock.price
 ```
 
 
-台股證券編碼
-
 ```python
->>> import twstock
->>> print(twstock.codes)                # 列印台股全部證券編碼資料
->>> print(twstock.codes['2330'])        # 列印 2330 證券編碼資料
-StockCodeInfo(type='股票', code='2330', name='台積電', ISIN='TW0002330008', start='1994/09/05', market='上市', group='半導體業', CFI='ESVUFR')
->>> print(twstock.codes['2330'].name)   # 列印 2330 證券名稱
-'台積電'
->>> print(twstock.codes['2330'].start)  # 列印 2330 證券上市日期
-'1994/09/05'
-```
-
-使用 Proxy (基於 [requests proxies](https://2.python-requests.org/en/master/user/advanced/#proxies))
-
-```python
-# 單一 Proxy
->>> from twstock.proxy import SingleProxyProvider
->>> spr = SingleProxyProvider({'http': 'http://localhost:8080'})
->>> twstock.proxy.configure_proxy_provider(spr)
-
-# 多個 Proxy
->>> from twstock.proxy import RoundRobinProxiesProvider
->>> proxies = [{'http': 'http://localhost:5000'}, {'http': 'http://localhost:5001'}]
->>> rrpr = RoundRobinProxiesProvider(proxies)
->>> twstock.proxy.configure_proxy_provider(rrpr)
-
-# 變更 Proxy 表
->>> another_proxies = [{'http': 'http://localhost:8000'}, {'https': 'https://localhost:8001'}]
->>> rrpr.proxies = another_proxies
+stock.capacity
 ```
 
 
-## 四大買賣點分析
-
 ```python
-from twstock import Stock
-from twstock import BestFourPoint
-
-stock = Stock('2330')
-bfp = BestFourPoint(stock)
-
-bfp.best_four_point_to_buy()    # 判斷是否為四大買點
-bfp.best_four_point_to_sell()   # 判斷是否為四大賣點
-bfp.best_four_point()           # 綜合判斷
+stock.data[0]
 ```
 
-## 即時股票資訊查詢
+------
+
+## 附件：Juypter Notebook 基本操作 
+
+### Jupyter Notebook 基本操作介紹影片:
+
 
 ```python
-import twstock
-
-twstock.realtime.get('2330')    # 擷取當前台積電股票資訊
-twstock.realtime.get(['2330', '2337', '2409'])  # 擷取當前三檔資訊
+%%HTML
+<iframe width="560" height="315" src="https://www.youtube.com/embed/HW29067qVWk" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 ```
 
+------
+### Juypter % 及 %% 外掛程式運用:
 
-## 使用範例
 
-* [tw-stocker](https://github.com/mlouielu/stocker)
+```python
+%lsmagic
+```
 
-## Contributing
+### 圖表基本操作 (matplot library):
 
-twstock was created by Louie Lu `<git@louie.lu>`.
 
-Contributing were welcome, please use GitHub issue and Pull Request to contribute!
+```python
+%matplotlib inline
+import numpy as np
+import matplotlib.pyplot as plt
 
-歡迎協作，請使用 GitHub issue 以及 Pull Request 功能來協作。
+N = 50
+x = np.random.rand(N)
+y = np.random.rand(N)
+colors = np.random.rand(N)
+area = np.pi * (15 * np.random.rand(N))**2
+
+plt.scatter(x, y, s=area, c=colors, alpha=0.5)
+plt.show()
+```
+
+### 計算時間:
+
+
+```python
+%%timeit
+square_evens = [n*n for n in range(1000)]
+```
+
+### 資料呈現(panda):
+
+* 解決ImportError: cannot import name 'nosetester'問題:
+  * numpy 1.11.1 version
+    * pip3 uninstall numpy
+    * pip3 install numpy==1.11.1
+  * pandas 0.19.2 version 
+    * pip3 uninstall pandas
+    * pip3 install pandas==0.19.2
+
+
+```python
+import pandas as pd
+import numpy as np
+
+df = pd.DataFrame(np.random.randn(10,5))
+df.head()
+
+```
