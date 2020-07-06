@@ -4,7 +4,7 @@ import datetime
 import time
 import urllib.parse
 from collections import namedtuple
-
+from random import randrange
 from twstock.proxy import get_proxies
 
 try:
@@ -55,13 +55,10 @@ class TWSEFetcher(BaseFetcher):
     def fetch(self, year: int, month: int, sid: str, retry: int=5):
         params = {'date': '%d%02d01' % (year, month), 'stockNo': sid}
         for retry_i in range(retry):
-            if retry_i <= 3:
-                print('retry_i:{}'.format(retry_i))
-                r = requests.get(self.REPORT_URL, params=params,
-                                 proxies=get_proxies())
-            else:
-                print('time sleep 10 sec')
-                time.sleep(10)
+            randNum = randrange(6)
+            time.sleep(randNum)
+            r = requests.get(self.REPORT_URL, params=params,
+                             proxies=get_proxies())
             try:
                 data = r.json()
             except JSONDecodeError:
