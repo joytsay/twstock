@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import datetime
+import time
 import urllib.parse
 from collections import namedtuple
 
@@ -44,7 +45,6 @@ class BaseFetcher(object):
     def purify(self, original_data):
         pass
 
-
 class TWSEFetcher(BaseFetcher):
     REPORT_URL = urllib.parse.urljoin(
         TWSE_BASE_URL, 'exchangeReport/STOCK_DAY')
@@ -55,8 +55,13 @@ class TWSEFetcher(BaseFetcher):
     def fetch(self, year: int, month: int, sid: str, retry: int=5):
         params = {'date': '%d%02d01' % (year, month), 'stockNo': sid}
         for retry_i in range(retry):
-            r = requests.get(self.REPORT_URL, params=params,
-                             proxies=get_proxies())
+            if retry_i <= 3:
+                print('retry_i:{}'.format(retry_i))
+                r = requests.get(self.REPORT_URL, params=params,
+                                 proxies=get_proxies())
+            else:
+                print('time sleep 10 sec')
+                time.sleep(10)
             try:
                 data = r.json()
             except JSONDecodeError:
@@ -172,8 +177,12 @@ class Stock(analytics.Analytics):
         self.data = []
         today = datetime.datetime.today()
         for year, month in self._month_year_iter(month, year, today.month, today.year):
+            start = time.time()
             self.raw_data.append(self.fetcher.fetch(year, month, self.sid))
             self.data.extend(self.raw_data[-1]['data'])
+            done = time.time()
+            elapsed = int(done - start)
+            print('fetch from {}/{}, time:{}'.format(year, month, elapsed))
         return self.data
 
     def fetch_31(self):
